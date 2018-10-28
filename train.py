@@ -13,12 +13,14 @@ import torch.utils.data as data
 from torch.autograd import Variable
 from torchvision import datasets, transforms
 
+import numpy as np
 from tqdm import tqdm
+import time
 
 import model
 from weight_clip import weight_clip
 
-def train(args): 
+def train(args):
     kwargs = {'num_workers': 2, 'pin_memory': True} if args.cuda else {}
     train_loader = data.DataLoader(
         datasets.MNIST('./data', train=True, download=True,
@@ -40,11 +42,30 @@ def train(args):
         net.cuda()
 
     optimizer = optim.Adam(net.parameters(), lr=args.lr)
-    creterion = nn.NLLLoss()
+    decay = (0.000003 / args.lr) ** (1. / args.epochs)
+    scheduler = optim.lr_scheduler.ExponentialLR(optimizer, decay)
+    creterion = nn.MultiMarginLoss()
 
+    input_layer = next(net.net.children())
+    weights = open('data/weights.csv', 'w')
+    stats = open('data/stats.csv', 'w')
+
+    test_epoch(net, creterion, test_loader, args)
     for epoch in range(1, args.epochs+1):
-        train_epoch(epoch, net, creterion, optimizer, train_loader, args)
-        test_epoch(net, creterion, test_loader, args)
+        scheduler.step(epoch - 1)
+        tr_loss, tr_acc = train_epoch(epoch, net, creterion, optimizer, train_loader, args)
+        tt_loss, tt_acc = test_epoch(net, creterion, test_loader, args)
+
+        items = input_layer.weight.cpu().data.numpy().reshape(-1, )
+        print(items.shape)
+        hist, _ = np.histogram(items, bins=1000, range=(-1., 1.))
+        weights.write(','.join(map(str, hist)))
+        weights.write('\n')
+
+        stats.write('{},{},{},{},{},{}\n'.format(epoch, time.clock(), tr_loss, tr_acc, tt_loss, tt_acc))
+        stats.flush()
+    weights.close()
+    stats.close()
 
 def train_epoch(epoch, net, creterion, optimizer, train_loader, args, valid_data=None):
     losses = 0
@@ -69,8 +90,7 @@ def train_epoch(epoch, net, creterion, optimizer, train_loader, args, valid_data
         losses += loss.data[0]
     print("Epoch {0}: Train Loss={1:.3f}, Train Accuracy={2:.3f}".format(epoch, losses / batch_idx, accs / batch_idx))
 
-    if valid_data is not None:
-        pass
+    return losses / batch_idx, accs / batch_idx
 
 def test_epoch(net, creterion, test_loader, args):
     net.eval()
@@ -89,4 +109,5 @@ def test_epoch(net, creterion, test_loader, args):
 
         losses += loss.data[0]
     print("\tTest Loss={0:.3f}, Test Accuracy={1:.3f}".format(losses / batch_idx, accs / batch_idx))
+    return losses / batch_idx, accs / batch_idx
 

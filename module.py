@@ -10,12 +10,17 @@ import math
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
+import numpy as np
 
-from function import binary_linear, bst
+from function import binary_linear, bst, stoch_binary_linear, linear
 
 class BinaryLinear(nn.Module):
-    def __init__(self, in_features, out_features, bias=True):
+    def __init__(self, in_features, out_features, bias=True, stochastic=False):
         super(BinaryLinear, self).__init__()
+        # grad_del = float(1. / np.sqrt(1.5 / (in_features + out_features)))
+        # self.register_backward_hook(lambda module, grad_input, grad_output: grad_input * grad_del)
+
+        self.stochastic = stochastic
         self.in_features = in_features
         self.out_features = out_features
         self.weight = nn.Parameter(torch.Tensor(out_features, in_features))
@@ -26,14 +31,23 @@ class BinaryLinear(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
-        self.weight.data.normal_(0, 1 * (math.sqrt(1. / self.in_features)))
+        self.weight.data.uniform_(-1., 1.)
         if self.bias is not None:
             self.bias.data.zero_()
 
     def forward(self, input):
-        if self.bias is not None:
-            return binary_linear(input, self.weight, self.bias)
-        return binary_linear(input, self.weight)
+        if self.stochastic is None:
+            if self.bias is not None:
+                return linear(input, self.weight, self.bias)
+            return linear(input, self.weight)
+        elif self.stochastic:
+            if self.bias is not None:
+                return stoch_binary_linear(input, self.weight, self.bias)
+            return stoch_binary_linear(input, self.weight)
+        else:
+            if self.bias is not None:
+                return binary_linear(input, self.weight, self.bias)
+            return binary_linear(input, self.weight)
 
     def __repr__(self):
         return self.__class__.__name__ + ' (' \

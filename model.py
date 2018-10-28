@@ -29,7 +29,7 @@ class BinaryConnect(nn.Module):
                 nn.ReLU(),
                 BinaryLinear(num_units, out_features),
                 nn.BatchNorm1d(out_features, eps=1e-4, momentum=0.15),
-                nn.LogSoftmax()
+                #nn.LogSoftmax()
                 )
 
     def forward(self, x):
