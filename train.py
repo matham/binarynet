@@ -57,10 +57,11 @@ def train(args):
         tt_loss, tt_acc = test_epoch(net, creterion, test_loader, args)
 
         items = input_layer.weight.cpu().data.numpy().reshape(-1, )
-        print(items.shape)
+        items = np.clip(items, -1, 1)
         hist, _ = np.histogram(items, bins=1000, range=(-1., 1.))
         weights.write(','.join(map(str, hist)))
         weights.write('\n')
+        weights.flush()
 
         stats.write('{},{},{},{},{},{}\n'.format(epoch, time.clock(), tr_loss, tr_acc, tt_loss, tt_acc))
         stats.flush()

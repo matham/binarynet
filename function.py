@@ -45,8 +45,9 @@ class StochasticLinearFunction(BinaryLinearFunction):
 
     @classmethod
     def _get_binary(cls, weight):
-        clamped = torch.clamp((weight + 1.) / 2., 0., 1.)
-        return where(Binomial(1, probs=clamped).sample() > 0, 1., -1.)
+        return torch.where(
+            torch.sign(weight - torch.empty(weight.shape).uniform_(-1, 1).cuda()) > 0, 
+            torch.ones(weight.shape).cuda(), -torch.ones(weight.shape).cuda())
 
 
 class LinearFunction(Function):

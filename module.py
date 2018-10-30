@@ -15,7 +15,7 @@ import numpy as np
 from function import binary_linear, bst, stoch_binary_linear, linear
 
 class BinaryLinear(nn.Module):
-    def __init__(self, in_features, out_features, bias=True, stochastic=False):
+    def __init__(self, in_features, out_features, bias=True, stochastic=True):
         super(BinaryLinear, self).__init__()
         # grad_del = float(1. / np.sqrt(1.5 / (in_features + out_features)))
         # self.register_backward_hook(lambda module, grad_input, grad_output: grad_input * grad_del)
